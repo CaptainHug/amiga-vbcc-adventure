@@ -34,9 +34,9 @@
 
 
 #include "board.h"
+#include "screen_size.h"
 #include "ptreplay.h"
 #include "ptreplay_protos.h"
-//#include "ptreplay_pragmas.h"
 
 
 struct IntuitionBase *IntuitionBase;
@@ -44,8 +44,16 @@ struct GfxBase *GfxBase;
 extern struct ExecBase *SysBase;
 extern struct DosLibrary *DOSBase;
 
+// view
+struct View my_view;
+struct View *my_old_view;
 
-/* Music */
+// viewport
+struct ViewPort view_port1;
+struct RasInfo ras_info1;
+
+
+// Music
 struct Library *PTReplayBase;
 struct Module *theMod;
 UBYTE *mod = NULL;
@@ -122,6 +130,29 @@ int main(int argc, char** argv)
 	}
 
 	printf("DEMO IS LOADING!\n");
+	
+	// Save the current View, so we can restore it later
+	my_old_view = GfxBase->ActiView;
+
+	// Prepare the View structure, and give it a pointer to the first ViewPort
+	InitView( &my_view );
+	my_view.ViewPort = &view_port1;
+	
+	InitVPort( &view_port1 );
+	view_port1.DWidth = DISPL_WIDTH1;		// width
+	view_port1.DHeight = DISPL_HEIGHT1;		// height
+	view_port1.DxOffset = 0;				// xpos
+	view_port1.DyOffset = 0;				// ypos
+	view_port1.RasInfo = &ras_info1;		// ptr to raster info
+	view_port1.Modes = DUALPF|PFBA;			// low res mode
+	view_port1.Next = NULL;					// ptr to next viewport
+	
+	view_port1.ColorMap = (struct ColorMap *) GetColorMap(COLOURS1 * 4);
+	if( view_port1.ColorMap == NULL ) {
+		//close_demo( "Could NOT get a ColorMap!" );
+		printf("no colormap");
+		exit(0);
+	}
 	
 	initMusic();
 	
