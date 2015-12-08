@@ -39,21 +39,25 @@
 #include "ptreplay_protos.h"
 
 
+// system libs
 struct IntuitionBase *IntuitionBase;
 struct GfxBase *GfxBase;
 extern struct ExecBase *SysBase;
 extern struct DosLibrary *DOSBase;
+extern struct Custom custom;
 
-// view
-struct View my_view;
-struct View *my_old_view;
+// display
+struct View view;
+struct View *oldView;
+struct ViewPort viewPort1;
+struct RasInfo rasInfo1;
+struct BitMap bitMap1;
+struct RastPort rastPort1;
 
-// viewport
-struct ViewPort view_port1;
-struct RasInfo ras_info1;
+struct Task *myTask = NULL;
+BYTE oldPri;
 
-
-// Music
+// music
 struct Library *PTReplayBase;
 struct Module *theMod;
 UBYTE *mod = NULL;
@@ -85,7 +89,7 @@ void initMusic(void)
 	}
 
 	mod = NULL;
-	mod = load_getchipmem((UBYTE *)"assets/miami_vice.mod", 7394);
+	mod = load_getchipmem((UBYTE *)"assets/intro129.mod", 46868);
 }
 
 void playMusic(void)
@@ -129,32 +133,83 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
-	printf("DEMO IS LOADING!\n");
+	
 	
 	// Save the current View, so we can restore it later
-	my_old_view = GfxBase->ActiView;
+	oldView = GfxBase->ActiView;
 
 	// Prepare the View structure, and give it a pointer to the first ViewPort
-	InitView( &my_view );
-	my_view.ViewPort = &view_port1;
+	InitView( &view );
+	view.ViewPort = &viewPort1;
 	
-	InitVPort( &view_port1 );
-	view_port1.DWidth = DISPL_WIDTH1;		// width
-	view_port1.DHeight = DISPL_HEIGHT1;		// height
-	view_port1.DxOffset = 0;				// xpos
-	view_port1.DyOffset = 0;				// ypos
-	view_port1.RasInfo = &ras_info1;		// ptr to raster info
-	view_port1.Modes = DUALPF|PFBA;			// low res mode
-	view_port1.Next = NULL;					// ptr to next viewport
+	InitVPort( &viewPort1 );
+	viewPort1.DWidth = DISPL_WIDTH1;		// width
+	viewPort1.DHeight = DISPL_HEIGHT1;		// height
+	viewPort1.DxOffset = 0;				// xpos
+	viewPort1.DyOffset = 0;				// ypos
+	viewPort1.RasInfo = &rasInfo1;		// ptr to raster info
+	viewPort1.Modes = PFBA;			// low res mode
+	viewPort1.Next = NULL;					// ptr to next viewport
 	
-	view_port1.ColorMap = (struct ColorMap *) GetColorMap(COLOURS1 * 4);
-	if( view_port1.ColorMap == NULL ) {
+	viewPort1.ColorMap = (struct ColorMap *) GetColorMap(COLOURS1 * 4);
+	if( viewPort1.ColorMap == NULL ) {
 		//close_demo( "Could NOT get a ColorMap!" );
 		printf("no colormap");
 		exit(0);
 	}
 	
+	// setup view
+	// ViewPort 1, Bitmap 1
+	InitBitMap( &bitMap1, DEPTH1, WIDTH1, HEIGHT1 + 8);
+	
+	int i=0;
+	
+	/* Allocate memory for the Raster: */ 
+	for(i=0; i<DEPTH1; i++)
+	{
+		bitMap1.Planes[i] = (PLANEPTR) AllocRaster( WIDTH1, HEIGHT1 + 8);
+		if( bitMap1.Planes[i] == NULL ) {
+			printf( "Could NOT allocate enough memory for the raster!" );
+			exit(0);
+		}
+	/* Clear the display memory with help of the Blitter: */
+		BltClear( bitMap1.Planes[i], RASSIZE( WIDTH1, HEIGHT1 + 8), 0 );
+	}
+	
+	// raster
+	/* ViewPort 1, Raster 1 */
+	rasInfo1.BitMap = &bitMap1; /* Pointer to the BitMap structure.  */
+	rasInfo1.RxOffset = 0;       /* The top left corner of the Raster */
+	rasInfo1.RyOffset = 0;       /* should be at the top left corner  */
+	
+	/* ViewPort 1 */
+	InitRastPort( &rastPort1 );
+	rastPort1.BitMap = &bitMap1;
+	
+	// create display
+	MakeVPort(&view, &viewPort1);
+	
+	printf("RESiSTANCE - LOADiNG & DECRUNCHiNG...\n");
+	
+	
 	initMusic();
+	
+	WaitTOF();
+	MrgCop(&view);
+	LoadView( &view );
+	WaitTOF();
+	WaitTOF();
+	
+	myTask = FindTask(NULL);
+	oldPri = SetTaskPri(myTask, 127);
+	
+	//Forbid();
+	//Disable();
+	WaitBlit();
+	
+	OFF_SPRITE;
+	
+	
 	
 	playMusic();
 	
