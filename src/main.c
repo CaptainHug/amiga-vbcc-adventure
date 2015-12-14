@@ -38,6 +38,9 @@
 #include "ptreplay.h"
 #include "ptreplay_protos.h"
 
+// assets
+#include "Background.h"
+
 
 // system libs
 struct IntuitionBase *IntuitionBase;
@@ -133,7 +136,7 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
-	
+	printf("RESiSTANCE - LOADiNG & DECRUNCHiNG...\n");
 	
 	// Save the current View, so we can restore it later
 	oldView = GfxBase->ActiView;
@@ -189,8 +192,12 @@ int main(int argc, char** argv)
 	// create display
 	MakeVPort(&view, &viewPort1);
 	
-	printf("RESiSTANCE - LOADiNG & DECRUNCHiNG...\n");
 	
+	UWORD* Background_img_chip = AllocMem(sizeof(UWORD) * sizeof(Background_img), MEMF_CHIP);
+	CopyMem(Background_img, Background_img_chip, sizeof(UWORD) * sizeof(Background_img));
+	Background_image.ImageData = Background_img_chip;
+	
+	LoadRGB4(&viewPort1, Background_palRGB4, 32);
 	
 	initMusic();
 	
@@ -209,6 +216,8 @@ int main(int argc, char** argv)
 	
 	OFF_SPRITE;
 	
+	
+	DrawImage(&rastPort1, &Background_image, 0, 0);
 	
 	
 	playMusic();
